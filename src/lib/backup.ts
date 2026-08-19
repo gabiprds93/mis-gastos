@@ -15,21 +15,19 @@ const download = (filename: string, content: string, type: string) => {
 export const exportJson = (expenses: Expense[]) =>
   download('gastos.json', JSON.stringify(expenses, null, 2), 'application/json')
 
-// Prefijar los valores que una hoja de cálculo interpretaría como fórmula.
+// Prefijar los valores que una hoja de cálculo interpretaría como fórmula,
+// incluso si vienen con espacios al inicio (las hojas de cálculo los ignoran).
 const escapeCsv = (value: string) => {
-  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  const safe = /^\s*[=+\-@\t\r]/.test(value) ? `'${value}` : value
   return `"${safe.replace(/"/g, '""')}"`
 }
 
 export const exportCsv = (expenses: Expense[]) => {
   const header = ['fecha', 'monto', 'categoria', 'nota'].join(',')
   const rows = expenses.map((expense) =>
-    [
-      expense.date,
-      expense.amount.toFixed(2),
-      escapeCsv(expense.category),
-      escapeCsv(expense.note),
-    ].join(','),
+    [expense.date, expense.amount.toFixed(2), expense.category, expense.note]
+      .map(escapeCsv)
+      .join(','),
   )
   download('gastos.csv', [header, ...rows].join('\n'), 'text/csv')
 }
