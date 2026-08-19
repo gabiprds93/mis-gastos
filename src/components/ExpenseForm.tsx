@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CATEGORIES } from '../types'
 import type { Expense } from '../types'
+import { isValidDate } from '../lib/backup'
 import { todayISO } from '../lib/period'
 
 type Props = {
@@ -27,8 +28,8 @@ export function ExpenseForm({ editing, onSubmit, onCancelEdit }: Props) {
       setError('Ingresa un monto mayor a 0')
       return
     }
-    if (!form.date) {
-      setError('Selecciona una fecha')
+    if (!isValidDate(form.date)) {
+      setError('Selecciona una fecha válida')
       return
     }
     setError('')
@@ -62,6 +63,8 @@ export function ExpenseForm({ editing, onSubmit, onCancelEdit }: Props) {
           <span className="text-xs text-neutral-500">Fecha</span>
           <input
             type="date"
+            min="1900-01-01"
+            max="2999-12-31"
             value={form.date}
             onChange={(event) => setForm({ ...form, date: event.target.value })}
             className="rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
