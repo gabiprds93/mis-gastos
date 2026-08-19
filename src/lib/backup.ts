@@ -1,3 +1,4 @@
+import { isValid, parseISO } from 'date-fns'
 import type { Expense } from '../types'
 
 const download = (filename: string, content: string, type: string) => {
@@ -5,14 +6,20 @@ const download = (filename: string, content: string, type: string) => {
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  document.body.append(link)
   link.click()
-  URL.revokeObjectURL(url)
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
 export const exportJson = (expenses: Expense[]) =>
   download('gastos.json', JSON.stringify(expenses, null, 2), 'application/json')
 
-const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`
+// Prefijar los valores que una hoja de cálculo interpretaría como fórmula.
+const escapeCsv = (value: string) => {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  return `"${safe.replace(/"/g, '""')}"`
+}
 
 export const exportCsv = (expenses: Expense[]) => {
   const header = ['fecha', 'monto', 'categoria', 'nota'].join(',')
@@ -27,8 +34,17 @@ export const exportCsv = (expenses: Expense[]) => {
   download('gastos.csv', [header, ...rows].join('\n'), 'text/csv')
 }
 
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+export const isValidDate = (date: string) => DATE_PATTERN.test(date) && isValid(parseISO(date))
+
 export const parseBackup = (raw: string): Expense[] => {
-  const parsed: unknown = JSON.parse(raw)
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('El archivo no es un JSON válido')
+  }
   if (!Array.isArray(parsed)) throw new Error('El archivo no contiene una lista de gastos')
   return parsed.map((item, index) => {
     if (typeof item !== 'object' || item === null) {
@@ -37,8 +53,11 @@ export const parseBackup = (raw: string): Expense[] => {
     const candidate = item as Partial<Expense>
     if (
       typeof candidate.amount !== 'number' ||
+      !Number.isFinite(candidate.amount) ||
+      candidate.amount <= 0 ||
+      typeof candidate.category !== 'string' ||
       typeof candidate.date !== 'string' ||
-      typeof candidate.category !== 'string'
+      !isValidDate(candidate.date)
     ) {
       throw new Error(`Registro inválido en la posición ${index + 1}`)
     }
